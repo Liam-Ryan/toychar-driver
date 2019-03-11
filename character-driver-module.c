@@ -19,10 +19,16 @@
 
 static struct class *toychar_class;
 static struct cdev dev_list[TOYCHAR_DEVICES];
+/* dev_t is the major and minor version of the device combined - 12 bits major
+ * 20 bits minor. dev_id is the dev_t for the major/minor for
+ * the first device assigned by kernel (in alloc_chrdev_region)
+ */
 static dev_t dev_id;
 static unsigned int major;
+/* since we increment each device minor number we just cache the first */
 static unsigned int minor_start;
 
+/* prototypes for the file_operations struct, kernel coding style */
 static int tc_open(struct inode *, struct file *);
 static int tc_release(struct inode *, struct file *);
 static ssize_t tc_read(struct file *, char __user *, size_t, loff_t *);
@@ -56,7 +62,9 @@ static int __init onload(void)
 	struct device *curdev;
 	void *err;
 
-
+	/* allocate a memory region for TOYCHAR_DEVICES TOYCHAR_DEV_NAME
+	 * starting at 0, sets the dev_id with the dev_t for first device
+	 */
 	alloc_chrdev_region(&dev_id, 0, TOYCHAR_DEVICES, TOYCHAR_DEV_NAME);
 	major = MAJOR(dev_id);
 	minor_start = MINOR(dev_id);
