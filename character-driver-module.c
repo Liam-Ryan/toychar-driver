@@ -17,8 +17,14 @@
 #define TOYCHAR_DEV_NAME "toychar"
 #define TOYCHAR_CLASS "toy"
 
+/* custom struct so we can use container_of to get dev_data from cdev pointer */
+struct toychar_device {
+	struct cdev cdev;
+	unsigned char dev_data[32];
+};
+
 static struct class *toychar_class;
-static struct cdev dev_list[TOYCHAR_DEVICES];
+static struct toychar_device dev_list[TOYCHAR_DEVICES];
 /* dev_t is the major and minor version of the device combined - 12 bits major
  * 20 bits minor. dev_id is the dev_t for the major/minor for
  * the first device assigned by kernel (in alloc_chrdev_region)
@@ -77,13 +83,16 @@ static int __init onload(void)
 	}
 
 	for (i = 0; i < TOYCHAR_DEVICES; i++) {
-		curdev = init_device(&dev_list[i], minor_start + i);
+		curdev = init_device(&dev_list[i].cdev, minor_start + i);
 		if (IS_ERR(curdev)) {
 			err = curdev;
 			pr_err("Could not create device %d %s %d",
 					minor_start + i, __func__, __LINE__);
 			goto destroy_devices;
 		}
+	/* all ok, write dev_data for the device */
+		snprintf(dev_list[i].dev_data, 32,
+				"This is the data for device %i", i);
 	}
 
 	return 0;
@@ -104,7 +113,7 @@ static void __exit onunload(void)
 	int i;
 
 	for (i = 0; i < TOYCHAR_DEVICES; i++)
-		device_destroy(toychar_class, dev_list[i].dev);
+		device_destroy(toychar_class, dev_list[i].cdev.dev);
 
 	class_destroy(toychar_class);
 	unregister_chrdev_region(dev_id, TOYCHAR_DEVICES);
